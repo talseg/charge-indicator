@@ -11,6 +11,7 @@ import android.view.WindowManager
 import android.widget.ImageView
 import androidx.annotation.ColorInt
 import com.talseg.chargeindicator.R
+import com.talseg.chargeindicator.settings.OverlaySettings
 
 /**
  * A small floating battery icon drawn over all other apps. Drag it to move it.
@@ -19,6 +20,9 @@ import com.talseg.chargeindicator.R
  * go to the app underneath. Requires the "Display over other apps" permission.
  */
 class ChargeOverlay(context: Context) {
+
+    /** Called with the new window position (pixels) when the user finishes dragging. */
+    var onDragEnd: ((x: Int, y: Int) -> Unit)? = null
 
     private val windowManager = context.getSystemService(WindowManager::class.java)
     private val density = context.resources.displayMetrics.density
@@ -31,14 +35,12 @@ class ChargeOverlay(context: Context) {
             shape = GradientDrawable.OVAL
             setColor(BACKGROUND_COLOR)
         }
-        val padding = dp(10)
-        setPadding(padding, padding, padding, padding)
         setOnTouchListener(DragListener())
     }
 
     private val layoutParams = WindowManager.LayoutParams(
-        dp(ICON_SIZE_DP),
-        dp(ICON_SIZE_DP),
+        0,
+        0,
         WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
         // Not focusable: never takes the keyboard, and touches outside the window
         // pass through to the app underneath (this flag implies FLAG_NOT_TOUCH_MODAL).
@@ -47,11 +49,16 @@ class ChargeOverlay(context: Context) {
     ).apply {
         // x/y are measured from the top-left corner, which keeps dragging math simple.
         gravity = Gravity.TOP or Gravity.START
-        x = screenWidth - dp(ICON_SIZE_DP) - dp(16)
-        y = dp(120)
     }
 
     private var isShown = false
+
+    init {
+        setSizeDp(OverlaySettings.DEFAULT_ICON_SIZE_DP)
+        // Default position: near the top-right corner, until the user drags it elsewhere.
+        layoutParams.x = screenWidth - layoutParams.width - dp(16)
+        layoutParams.y = dp(120)
+    }
 
     fun show() {
         if (isShown) return
@@ -67,6 +74,28 @@ class ChargeOverlay(context: Context) {
 
     fun setColor(@ColorInt color: Int) {
         iconView.imageTintList = ColorStateList.valueOf(color)
+    }
+
+    fun setSizeDp(sizeDp: Int) {
+        val sizePx = dp(sizeDp)
+        if (layoutParams.width == sizePx) return
+        layoutParams.width = sizePx
+        layoutParams.height = sizePx
+        // Keep the icon-to-circle proportion the same at every size.
+        val padding = sizePx * ICON_PADDING_PERCENT / 100
+        iconView.setPadding(padding, padding, padding, padding)
+        updateWindow()
+    }
+
+    fun setPosition(x: Int, y: Int) {
+        if (layoutParams.x == x && layoutParams.y == y) return
+        layoutParams.x = x
+        layoutParams.y = y
+        updateWindow()
+    }
+
+    private fun updateWindow() {
+        if (isShown) windowManager.updateViewLayout(iconView, layoutParams)
     }
 
     private fun dp(value: Int): Int = (value * density).toInt()
@@ -92,14 +121,19 @@ class ChargeOverlay(context: Context) {
                     layoutParams.y = windowStartY + (event.rawY - touchStartY).toInt()
                     windowManager.updateViewLayout(view, layoutParams)
                 }
-                MotionEvent.ACTION_UP -> view.performClick()
+                MotionEvent.ACTION_UP -> {
+                    if (layoutParams.x != windowStartX || layoutParams.y != windowStartY) {
+                        onDragEnd?.invoke(layoutParams.x, layoutParams.y)
+                    }
+                    view.performClick()
+                }
             }
             return true
         }
     }
 
     private companion object {
-        const val ICON_SIZE_DP = 56
+        const val ICON_PADDING_PERCENT = 18
         const val BACKGROUND_COLOR = 0x99000000.toInt() // 60% black
     }
 }

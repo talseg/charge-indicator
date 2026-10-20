@@ -7,6 +7,8 @@
     <string name="charging_speed_fast">Fast</string>
     <string name="charging_speed_super_fast">Super Fast</string>
 
+    <string name="icon_size_label">Icon size: %1$d dp</string>
+
     <string name="overlay_notification_channel">Charging indicator</string>
     <string name="overlay_notification_text">Showing the charging indicator</string>
     <string name="overlay_notification_stop">Stop</string>

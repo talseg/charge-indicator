@@ -18,11 +18,13 @@ import com.talseg.chargeindicator.MainActivity
 import com.talseg.chargeindicator.R
 import com.talseg.chargeindicator.battery.BatteryMonitor
 import com.talseg.chargeindicator.battery.ChargingSpeed
+import com.talseg.chargeindicator.settings.OverlaySettingsRepository
 import com.talseg.chargeindicator.ui.colorArgb
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
@@ -52,12 +54,24 @@ class ChargeOverlayService : Service() {
             return
         }
 
+        val settingsRepository = OverlaySettingsRepository(this)
         val overlay = ChargeOverlay(this).also { this.overlay = it }
+        overlay.onDragEnd = { x, y ->
+            scope.launch { settingsRepository.setPosition(x, y) }
+        }
+
+        val chargingSpeed = BatteryMonitor(this).batteryState
+            .map { it.chargingSpeed }
+            .distinctUntilChanged()
+
         scope.launch {
-            BatteryMonitor(this@ChargeOverlayService).batteryState
-                .map { it.chargingSpeed }
-                .distinctUntilChanged()
-                .collect { speed ->
+            // Settings are applied before showing, so the icon appears at its saved size and place.
+            combine(chargingSpeed, settingsRepository.settings) { speed, settings -> speed to settings }
+                .collect { (speed, settings) ->
+                    overlay.setSizeDp(settings.iconSizeDp)
+                    if (settings.positionX != null && settings.positionY != null) {
+                        overlay.setPosition(settings.positionX, settings.positionY)
+                    }
                     // Visible only while charging; colored by charging speed.
                     if (speed == ChargingSpeed.NONE) {
                         overlay.hide()
