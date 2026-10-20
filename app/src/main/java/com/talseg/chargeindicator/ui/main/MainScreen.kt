@@ -1,5 +1,6 @@
 package com.talseg.chargeindicator.ui.main
 
+import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -19,10 +20,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.tooling.preview.PreviewParameter
+import androidx.compose.ui.tooling.preview.PreviewParameterProvider
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.talseg.chargeindicator.R
+import com.talseg.chargeindicator.battery.ChargingSpeed
 import com.talseg.chargeindicator.ui.theme.ChargeIndicatorTheme
 
 /** Connects the ViewModel to the UI. The only composable that knows about [MainViewModel]. */
@@ -46,8 +51,8 @@ fun MainContent(uiState: MainUiState, onClose: () -> Unit) {
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Greeting(
-                appName = "Charge Indicator",
-                isPluggedIn = uiState.isPluggedIn,
+                appName = stringResource(R.string.app_name),
+                chargingSpeed = uiState.chargingSpeed,
                 modifier = Modifier.weight(1f)
             )
             Button(
@@ -61,7 +66,12 @@ fun MainContent(uiState: MainUiState, onClose: () -> Unit) {
 }
 
 @Composable
-private fun Greeting(appName: String, isPluggedIn: Boolean, modifier: Modifier = Modifier) {
+private fun Greeting(
+    appName: String,
+    chargingSpeed: ChargingSpeed,
+    modifier: Modifier = Modifier
+) {
+    val color = chargingSpeed.color()
     Column(
         modifier = modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.Center,
@@ -70,30 +80,53 @@ private fun Greeting(appName: String, isPluggedIn: Boolean, modifier: Modifier =
         Text(
             text = appName,
             style = MaterialTheme.typography.headlineLarge,
-            color = Color.Yellow
+            color = color
         )
         Spacer(Modifier.height(24.dp))
         Icon(
             painter = painterResource(R.drawable.ic_battery_charging_full),
             contentDescription = "Battery",
-            tint = if (isPluggedIn) Color.Yellow else Color.White,
+            tint = color,
             modifier = Modifier.size(96.dp)
+        )
+        Spacer(Modifier.height(8.dp))
+        Text(
+            text = stringResource(chargingSpeed.labelRes()),
+            style = MaterialTheme.typography.titleLarge,
+            color = color
         )
     }
 }
 
-@Preview(name = "Plugged in", showBackground = true)
-@Composable
-private fun MainContentPluggedInPreview() {
-    ChargeIndicatorTheme {
-        MainContent(uiState = MainUiState(isPluggedIn = true), onClose = {})
-    }
+/** Color intensity grows with charging speed. */
+private fun ChargingSpeed.color(): Color = when (this) {
+    ChargingSpeed.NONE -> Color.White
+    ChargingSpeed.VERY_SLOW -> Color(0xFFFFF59D) // light yellow
+    ChargingSpeed.SLOW -> Color(0xFFFFEB3B)      // yellow
+    ChargingSpeed.FAST -> Color(0xFFFF9800)      // orange
+    ChargingSpeed.SUPER_FAST -> Color(0xFFF44336) // red
 }
 
-@Preview(name = "Unplugged", showBackground = true)
+@StringRes
+private fun ChargingSpeed.labelRes(): Int = when (this) {
+    ChargingSpeed.NONE -> R.string.charging_speed_none
+    ChargingSpeed.VERY_SLOW -> R.string.charging_speed_very_slow
+    ChargingSpeed.SLOW -> R.string.charging_speed_slow
+    ChargingSpeed.FAST -> R.string.charging_speed_fast
+    ChargingSpeed.SUPER_FAST -> R.string.charging_speed_super_fast
+}
+
+/** Feeds every [ChargingSpeed] into the preview below, so each one renders side by side. */
+private class ChargingSpeedProvider : PreviewParameterProvider<ChargingSpeed> {
+    override val values = ChargingSpeed.entries.asSequence()
+}
+
+@Preview(showBackground = true)
 @Composable
-private fun MainContentUnpluggedPreview() {
+private fun MainContentPreview(
+    @PreviewParameter(ChargingSpeedProvider::class) chargingSpeed: ChargingSpeed
+) {
     ChargeIndicatorTheme {
-        MainContent(uiState = MainUiState(isPluggedIn = false), onClose = {})
+        MainContent(uiState = MainUiState(chargingSpeed = chargingSpeed), onClose = {})
     }
 }

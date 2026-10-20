@@ -13,7 +13,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     val uiState: StateFlow<MainUiState> =
         BatteryMonitor(application).batteryState
-            .map { battery -> MainUiState(isPluggedIn = battery.isPluggedIn) }
+            .map { battery -> MainUiState(chargingSpeed = battery.chargingSpeed) }
             .stateIn(
                 scope = viewModelScope,
                 started = SharingStarted.WhileSubscribed(5_000),

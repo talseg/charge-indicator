@@ -1,3 +1,9 @@
 <resources>
     <string name="app_name">Charge Indicator</string>
+
+    <string name="charging_speed_none">Disconnected</string>
+    <string name="charging_speed_very_slow">Very Slow</string>
+    <string name="charging_speed_slow">Slow</string>
+    <string name="charging_speed_fast">Fast</string>
+    <string name="charging_speed_super_fast">Super Fast</string>
 </resources>
