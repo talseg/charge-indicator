@@ -208,21 +208,29 @@ private fun OverlayIconPreview(
     showCircleBackground: Boolean,
     modifier: Modifier = Modifier
 ) {
-    val frame = if (showCircleBackground) {
-        Modifier
-            .size(sizeDp.dp)
-            .background(Color(OverlayStyle.CIRCLE_BACKGROUND_COLOR), CircleShape)
-            .padding((sizeDp * OverlayStyle.CIRCLE_PADDING_PERCENT / 100).dp)
-    } else {
-        Modifier.size(width = (sizeDp * OverlayStyle.BATTERY_ASPECT_RATIO).dp, height = sizeDp.dp)
-    }
-    Box(modifier = modifier.then(frame)) {
+    // The battery is always sizeDp tall; the optional circle is drawn around it.
+    val battery = @Composable {
         Icon(
             painter = painterResource(R.drawable.ic_overlay_battery),
             contentDescription = null,
             tint = Color(chargingSpeed.colorArgb()),
-            modifier = Modifier.fillMaxSize()
+            modifier = Modifier.size(
+                width = (sizeDp * OverlayStyle.BATTERY_ASPECT_RATIO).dp,
+                height = sizeDp.dp
+            )
         )
+    }
+    if (showCircleBackground) {
+        Box(
+            modifier = modifier
+                .size((sizeDp * OverlayStyle.CIRCLE_DIAMETER_RATIO).dp)
+                .background(Color(OverlayStyle.CIRCLE_BACKGROUND_COLOR), CircleShape),
+            contentAlignment = Alignment.Center
+        ) {
+            battery()
+        }
+    } else {
+        Box(modifier = modifier) { battery() }
     }
 }
 

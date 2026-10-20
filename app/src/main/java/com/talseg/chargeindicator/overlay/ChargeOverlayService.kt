@@ -56,8 +56,8 @@ class ChargeOverlayService : Service() {
 
         val settingsRepository = OverlaySettingsRepository(this)
         val overlay = ChargeOverlay(this).also { this.overlay = it }
-        overlay.onDragEnd = { x, y ->
-            scope.launch { settingsRepository.setPosition(x, y) }
+        overlay.onDragEnd = { centerX, centerY ->
+            scope.launch { settingsRepository.setCenter(centerX, centerY) }
         }
 
         val chargingSpeed = BatteryMonitor(this).batteryState
@@ -70,8 +70,8 @@ class ChargeOverlayService : Service() {
                 .collect { (speed, settings) ->
                     overlay.setSizeDp(settings.iconSizeDp)
                     overlay.setShowCircleBackground(settings.showCircleBackground)
-                    if (settings.positionX != null && settings.positionY != null) {
-                        overlay.setPosition(settings.positionX, settings.positionY)
+                    if (settings.centerX != null && settings.centerY != null) {
+                        overlay.setCenter(settings.centerX, settings.centerY)
                     }
                     // Visible only while charging; colored by charging speed.
                     if (speed == ChargingSpeed.NONE) {

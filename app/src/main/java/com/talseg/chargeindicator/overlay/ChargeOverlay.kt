@@ -18,11 +18,14 @@ import com.talseg.chargeindicator.settings.OverlaySettings
  *
  * It lives in its own window, sized to the icon only, so touches anywhere else
  * go to the app underneath. Requires the "Display over other apps" permission.
+ *
+ * The position is the battery's center, so changing the size or toggling the
+ * circle grows or shrinks the icon around the same point instead of shifting it.
  */
 class ChargeOverlay(context: Context) {
 
-    /** Called with the new window position (pixels) when the user finishes dragging. */
-    var onDragEnd: ((x: Int, y: Int) -> Unit)? = null
+    /** Called with the new center position (pixels) when the user finishes dragging. */
+    var onDragEnd: ((centerX: Int, centerY: Int) -> Unit)? = null
 
     private val windowManager = context.getSystemService(WindowManager::class.java)
     private val density = context.resources.displayMetrics.density
@@ -48,19 +51,22 @@ class ChargeOverlay(context: Context) {
         WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
         PixelFormat.TRANSLUCENT
     ).apply {
-        // x/y are measured from the top-left corner, which keeps dragging math simple.
+        // Window x/y are its top-left corner; we derive them from the center.
         gravity = Gravity.TOP or Gravity.START
     }
 
     private var isShown = false
     private var sizeDp = OverlaySettings.DEFAULT_ICON_SIZE_DP
     private var showCircleBackground = true
+    private var centerX = 0
+    private var centerY = 0
 
     init {
-        applyAppearance()
         // Default position: near the top-right corner, until the user drags it elsewhere.
-        layoutParams.x = screenWidth - layoutParams.width - dp(16)
-        layoutParams.y = dp(120)
+        val batteryHeight = dp(sizeDp)
+        centerX = screenWidth - dp(16) - batteryHeight
+        centerY = dp(120) + batteryHeight
+        applyLayout()
     }
 
     fun show() {
@@ -79,42 +85,53 @@ class ChargeOverlay(context: Context) {
         iconView.imageTintList = ColorStateList.valueOf(color)
     }
 
+    /** Sets the battery's height. The circle, if shown, is drawn around it. */
     fun setSizeDp(sizeDp: Int) {
         if (this.sizeDp == sizeDp) return
         this.sizeDp = sizeDp
-        applyAppearance()
+        applyLayout()
     }
 
     fun setShowCircleBackground(show: Boolean) {
         if (showCircleBackground == show) return
         showCircleBackground = show
-        applyAppearance()
+        applyLayout()
     }
 
-    fun setPosition(x: Int, y: Int) {
-        if (layoutParams.x == x && layoutParams.y == y) return
-        layoutParams.x = x
-        layoutParams.y = y
-        updateWindow()
+    fun setCenter(centerX: Int, centerY: Int) {
+        if (this.centerX == centerX && this.centerY == centerY) return
+        this.centerX = centerX
+        this.centerY = centerY
+        applyLayout()
     }
 
     /**
-     * With the circle: a square window, the battery centered inside with padding.
-     * Without it: the window is exactly the battery's shape, so it can touch the screen edges.
+     * Without the circle the window is exactly the battery's shape, so it can touch
+     * the screen edges. With it, the window is the circle's square and the battery
+     * sits in the middle, at the same size.
      */
-    private fun applyAppearance() {
-        val heightPx = dp(sizeDp)
+    private fun applyLayout() {
+        val batteryHeight = dp(sizeDp)
+        val batteryWidth = (batteryHeight * OverlayStyle.BATTERY_ASPECT_RATIO).toInt()
+
         if (showCircleBackground) {
-            val padding = heightPx * OverlayStyle.CIRCLE_PADDING_PERCENT / 100
-            layoutParams.width = heightPx
+            val diameter = (batteryHeight * OverlayStyle.CIRCLE_DIAMETER_RATIO).toInt()
+            // Uniform padding leaves a batteryHeight-tall square inside; the image fits
+            // its height and centers horizontally.
+            val padding = (diameter - batteryHeight) / 2
             iconView.setPadding(padding, padding, padding, padding)
             iconView.background = circleBackground
+            layoutParams.width = diameter
+            layoutParams.height = diameter
         } else {
-            layoutParams.width = (heightPx * OverlayStyle.BATTERY_ASPECT_RATIO).toInt()
             iconView.setPadding(0, 0, 0, 0)
             iconView.background = null
+            layoutParams.width = batteryWidth
+            layoutParams.height = batteryHeight
         }
-        layoutParams.height = heightPx
+
+        layoutParams.x = centerX - layoutParams.width / 2
+        layoutParams.y = centerY - layoutParams.height / 2
         updateWindow()
     }
 
@@ -126,28 +143,35 @@ class ChargeOverlay(context: Context) {
 
     /** Moves the overlay window with the finger. */
     private inner class DragListener : View.OnTouchListener {
-        private var windowStartX = 0
-        private var windowStartY = 0
+        private var centerStartX = 0
+        private var centerStartY = 0
         private var touchStartX = 0f
         private var touchStartY = 0f
 
         override fun onTouch(view: View, event: MotionEvent): Boolean {
             when (event.actionMasked) {
                 MotionEvent.ACTION_DOWN -> {
-                    windowStartX = layoutParams.x
-                    windowStartY = layoutParams.y
+                    centerStartX = centerX
+                    centerStartY = centerY
                     // rawX/rawY are screen coordinates, unaffected by the window moving.
                     touchStartX = event.rawX
                     touchStartY = event.rawY
                 }
                 MotionEvent.ACTION_MOVE -> {
-                    layoutParams.x = windowStartX + (event.rawX - touchStartX).toInt()
-                    layoutParams.y = windowStartY + (event.rawY - touchStartY).toInt()
-                    windowManager.updateViewLayout(view, layoutParams)
+                    // Keep the whole window on screen (Android would clamp it anyway), so the
+                    // stored center never drifts past an edge.
+                    val metrics = view.resources.displayMetrics
+                    val halfWidth = layoutParams.width / 2
+                    val halfHeight = layoutParams.height / 2
+                    centerX = (centerStartX + (event.rawX - touchStartX).toInt())
+                        .coerceIn(halfWidth, metrics.widthPixels - halfWidth)
+                    centerY = (centerStartY + (event.rawY - touchStartY).toInt())
+                        .coerceIn(halfHeight, metrics.heightPixels - halfHeight)
+                    applyLayout()
                 }
                 MotionEvent.ACTION_UP -> {
-                    if (layoutParams.x != windowStartX || layoutParams.y != windowStartY) {
-                        onDragEnd?.invoke(layoutParams.x, layoutParams.y)
+                    if (centerX != centerStartX || centerY != centerStartY) {
+                        onDragEnd?.invoke(centerX, centerY)
                     }
                     view.performClick()
                 }
