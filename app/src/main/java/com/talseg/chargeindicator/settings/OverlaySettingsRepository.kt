@@ -3,6 +3,7 @@ package com.talseg.chargeindicator.settings
 import android.content.Context
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.core.intPreferencesKey
@@ -14,6 +15,7 @@ import java.io.IOException
 
 data class OverlaySettings(
     val iconSizeDp: Int = DEFAULT_ICON_SIZE_DP,
+    val showCircleBackground: Boolean = true,
     /** Saved window position in pixels; null until the user first drags the icon. */
     val positionX: Int? = null,
     val positionY: Int? = null
@@ -21,7 +23,7 @@ data class OverlaySettings(
     companion object {
         const val DEFAULT_ICON_SIZE_DP = 56
         const val MIN_ICON_SIZE_DP = 32
-        const val MAX_ICON_SIZE_DP = 128
+        const val MAX_ICON_SIZE_DP = 256
         const val ICON_SIZE_STEP_DP = 8
     }
 }
@@ -43,6 +45,7 @@ class OverlaySettingsRepository(context: Context) {
         .map { prefs ->
             OverlaySettings(
                 iconSizeDp = prefs[ICON_SIZE_DP] ?: OverlaySettings.DEFAULT_ICON_SIZE_DP,
+                showCircleBackground = prefs[SHOW_CIRCLE_BACKGROUND] ?: true,
                 positionX = prefs[POSITION_X],
                 positionY = prefs[POSITION_Y]
             )
@@ -50,6 +53,10 @@ class OverlaySettingsRepository(context: Context) {
 
     suspend fun setIconSizeDp(sizeDp: Int) {
         dataStore.edit { it[ICON_SIZE_DP] = sizeDp }
+    }
+
+    suspend fun setShowCircleBackground(show: Boolean) {
+        dataStore.edit { it[SHOW_CIRCLE_BACKGROUND] = show }
     }
 
     suspend fun setPosition(x: Int, y: Int) {
@@ -61,6 +68,7 @@ class OverlaySettingsRepository(context: Context) {
 
     private companion object {
         val ICON_SIZE_DP = intPreferencesKey("icon_size_dp")
+        val SHOW_CIRCLE_BACKGROUND = booleanPreferencesKey("show_circle_background")
         val POSITION_X = intPreferencesKey("position_x")
         val POSITION_Y = intPreferencesKey("position_y")
     }

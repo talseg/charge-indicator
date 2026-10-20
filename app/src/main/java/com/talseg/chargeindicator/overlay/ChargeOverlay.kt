@@ -28,13 +28,14 @@ class ChargeOverlay(context: Context) {
     private val density = context.resources.displayMetrics.density
     private val screenWidth = context.resources.displayMetrics.widthPixels
 
+    // A dark circle behind the icon keeps it visible on light and dark apps alike.
+    private val circleBackground = GradientDrawable().apply {
+        shape = GradientDrawable.OVAL
+        setColor(OverlayStyle.CIRCLE_BACKGROUND_COLOR)
+    }
+
     private val iconView = ImageView(context).apply {
-        setImageResource(R.drawable.ic_battery_charging_full)
-        // A dark circle behind the icon keeps it visible on light and dark apps alike.
-        background = GradientDrawable().apply {
-            shape = GradientDrawable.OVAL
-            setColor(BACKGROUND_COLOR)
-        }
+        setImageResource(R.drawable.ic_overlay_battery)
         setOnTouchListener(DragListener())
     }
 
@@ -52,9 +53,11 @@ class ChargeOverlay(context: Context) {
     }
 
     private var isShown = false
+    private var sizeDp = OverlaySettings.DEFAULT_ICON_SIZE_DP
+    private var showCircleBackground = true
 
     init {
-        setSizeDp(OverlaySettings.DEFAULT_ICON_SIZE_DP)
+        applyAppearance()
         // Default position: near the top-right corner, until the user drags it elsewhere.
         layoutParams.x = screenWidth - layoutParams.width - dp(16)
         layoutParams.y = dp(120)
@@ -77,20 +80,41 @@ class ChargeOverlay(context: Context) {
     }
 
     fun setSizeDp(sizeDp: Int) {
-        val sizePx = dp(sizeDp)
-        if (layoutParams.width == sizePx) return
-        layoutParams.width = sizePx
-        layoutParams.height = sizePx
-        // Keep the icon-to-circle proportion the same at every size.
-        val padding = sizePx * ICON_PADDING_PERCENT / 100
-        iconView.setPadding(padding, padding, padding, padding)
-        updateWindow()
+        if (this.sizeDp == sizeDp) return
+        this.sizeDp = sizeDp
+        applyAppearance()
+    }
+
+    fun setShowCircleBackground(show: Boolean) {
+        if (showCircleBackground == show) return
+        showCircleBackground = show
+        applyAppearance()
     }
 
     fun setPosition(x: Int, y: Int) {
         if (layoutParams.x == x && layoutParams.y == y) return
         layoutParams.x = x
         layoutParams.y = y
+        updateWindow()
+    }
+
+    /**
+     * With the circle: a square window, the battery centered inside with padding.
+     * Without it: the window is exactly the battery's shape, so it can touch the screen edges.
+     */
+    private fun applyAppearance() {
+        val heightPx = dp(sizeDp)
+        if (showCircleBackground) {
+            val padding = heightPx * OverlayStyle.CIRCLE_PADDING_PERCENT / 100
+            layoutParams.width = heightPx
+            iconView.setPadding(padding, padding, padding, padding)
+            iconView.background = circleBackground
+        } else {
+            layoutParams.width = (heightPx * OverlayStyle.BATTERY_ASPECT_RATIO).toInt()
+            iconView.setPadding(0, 0, 0, 0)
+            iconView.background = null
+        }
+        layoutParams.height = heightPx
         updateWindow()
     }
 
@@ -130,10 +154,5 @@ class ChargeOverlay(context: Context) {
             }
             return true
         }
-    }
-
-    private companion object {
-        const val ICON_PADDING_PERCENT = 18
-        const val BACKGROUND_COLOR = 0x99000000.toInt() // 60% black
     }
 }

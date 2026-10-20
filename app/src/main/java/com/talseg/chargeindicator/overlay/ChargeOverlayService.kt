@@ -69,6 +69,7 @@ class ChargeOverlayService : Service() {
             combine(chargingSpeed, settingsRepository.settings) { speed, settings -> speed to settings }
                 .collect { (speed, settings) ->
                     overlay.setSizeDp(settings.iconSizeDp)
+                    overlay.setShowCircleBackground(settings.showCircleBackground)
                     if (settings.positionX != null && settings.positionY != null) {
                         overlay.setPosition(settings.positionX, settings.positionY)
                     }

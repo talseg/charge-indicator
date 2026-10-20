@@ -1,18 +1,26 @@
 package com.talseg.chargeindicator.ui.main
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Button
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -31,6 +39,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.talseg.chargeindicator.R
 import com.talseg.chargeindicator.battery.ChargingSpeed
+import com.talseg.chargeindicator.overlay.OverlayStyle
 import com.talseg.chargeindicator.settings.OverlaySettings
 import com.talseg.chargeindicator.ui.colorArgb
 import com.talseg.chargeindicator.ui.labelRes
@@ -44,6 +53,8 @@ fun MainScreen(viewModel: MainViewModel, onClose: () -> Unit) {
     MainContent(
         uiState = uiState,
         onIconSizeChange = viewModel::onIconSizeChange,
+        onShowCircleBackgroundChange = viewModel::onShowCircleBackgroundChange,
+        onSimulatedSpeedChange = viewModel::onSimulatedSpeedChange,
         onClose = onClose
     )
 }
@@ -53,8 +64,12 @@ fun MainScreen(viewModel: MainViewModel, onClose: () -> Unit) {
 fun MainContent(
     uiState: MainUiState,
     onIconSizeChange: (Int) -> Unit,
+    onShowCircleBackgroundChange: (Boolean) -> Unit,
+    onSimulatedSpeedChange: (ChargingSpeed?) -> Unit,
     onClose: () -> Unit
 ) {
+    val speedColor = Color(uiState.chargingSpeed.colorArgb())
+
     Scaffold(
         modifier = Modifier.fillMaxSize(),
         containerColor = Color.Blue
@@ -62,22 +77,54 @@ fun MainContent(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(innerPadding),
+                .padding(innerPadding)
+                .padding(horizontal = 24.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Greeting(
-                appName = stringResource(R.string.app_name),
-                chargingSpeed = uiState.chargingSpeed,
-                modifier = Modifier.weight(1f)
+            Spacer(Modifier.height(24.dp))
+            Text(
+                text = stringResource(R.string.app_name),
+                style = MaterialTheme.typography.headlineLarge,
+                color = speedColor
             )
+
+            // The preview takes the free space, so large icon sizes still fit.
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth(),
+                verticalArrangement = Arrangement.Center,
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                OverlayIconPreview(
+                    chargingSpeed = uiState.chargingSpeed,
+                    sizeDp = uiState.iconSizeDp,
+                    showCircleBackground = uiState.showCircleBackground
+                )
+                Spacer(Modifier.height(12.dp))
+                Text(
+                    text = stringResource(uiState.chargingSpeed.labelRes()),
+                    style = MaterialTheme.typography.titleLarge,
+                    color = speedColor
+                )
+            }
+
+            PreviewStateSelector(
+                simulatedSpeed = uiState.simulatedSpeed,
+                onSimulatedSpeedChange = onSimulatedSpeedChange
+            )
+            Spacer(Modifier.height(16.dp))
             IconSizeSetting(
                 sizeDp = uiState.iconSizeDp,
-                onSizeChange = onIconSizeChange,
-                modifier = Modifier.padding(horizontal = 32.dp)
+                onSizeChange = onIconSizeChange
+            )
+            ShowCircleBackgroundSetting(
+                show = uiState.showCircleBackground,
+                onShowChange = onShowCircleBackgroundChange
             )
             Button(
                 onClick = onClose,
-                modifier = Modifier.padding(24.dp)
+                modifier = Modifier.padding(vertical = 16.dp)
             ) {
                 Text("Close")
             }
@@ -85,56 +132,88 @@ fun MainContent(
     }
 }
 
+/**
+ * Draws the floating icon the way the overlay will look: same size, colors and circle.
+ * Mirrors ChargeOverlay (a View) using the shared [OverlayStyle] constants.
+ */
 @Composable
-private fun Greeting(
-    appName: String,
+private fun OverlayIconPreview(
     chargingSpeed: ChargingSpeed,
+    sizeDp: Int,
+    showCircleBackground: Boolean,
     modifier: Modifier = Modifier
 ) {
-    val color = Color(chargingSpeed.colorArgb())
-    Column(
-        modifier = modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Text(
-            text = appName,
-            style = MaterialTheme.typography.headlineLarge,
-            color = color
-        )
-        Spacer(Modifier.height(24.dp))
+    val frame = if (showCircleBackground) {
+        Modifier
+            .size(sizeDp.dp)
+            .background(Color(OverlayStyle.CIRCLE_BACKGROUND_COLOR), CircleShape)
+            .padding((sizeDp * OverlayStyle.CIRCLE_PADDING_PERCENT / 100).dp)
+    } else {
+        Modifier.size(width = (sizeDp * OverlayStyle.BATTERY_ASPECT_RATIO).dp, height = sizeDp.dp)
+    }
+    Box(modifier = modifier.then(frame)) {
         Icon(
-            painter = painterResource(R.drawable.ic_battery_charging_full),
-            contentDescription = "Battery",
-            tint = color,
-            modifier = Modifier.size(96.dp)
-        )
-        Spacer(Modifier.height(8.dp))
-        Text(
-            text = stringResource(chargingSpeed.labelRes()),
-            style = MaterialTheme.typography.titleLarge,
-            color = color
+            painter = painterResource(R.drawable.ic_overlay_battery),
+            contentDescription = null,
+            tint = Color(chargingSpeed.colorArgb()),
+            modifier = Modifier.fillMaxSize()
         )
     }
 }
 
+/** Chips to preview each charging state; "Live" follows the real charger. */
+@Composable
+private fun PreviewStateSelector(
+    simulatedSpeed: ChargingSpeed?,
+    onSimulatedSpeedChange: (ChargingSpeed?) -> Unit
+) {
+    val chipColors = FilterChipDefaults.filterChipColors(
+        labelColor = Color.White,
+        selectedLabelColor = Color.Blue,
+        selectedContainerColor = Color.White
+    )
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Text(
+            text = stringResource(R.string.preview_state_label),
+            style = MaterialTheme.typography.titleMedium,
+            color = Color.White
+        )
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            FilterChip(
+                selected = simulatedSpeed == null,
+                onClick = { onSimulatedSpeedChange(null) },
+                label = { Text(stringResource(R.string.preview_state_live)) },
+                colors = chipColors
+            )
+            ChargingSpeed.entries.forEach { speed ->
+                FilterChip(
+                    selected = simulatedSpeed == speed,
+                    onClick = { onSimulatedSpeedChange(speed) },
+                    label = { Text(stringResource(speed.labelRes())) },
+                    colors = chipColors
+                )
+            }
+        }
+    }
+}
+
 /**
- * Slider for the overlay icon size. While dragging, only the local value changes;
- * the setting is saved once, when the finger lifts.
+ * Slider for the overlay icon size. Saves on every snapped step while dragging,
+ * so the overlay resizes live; the slider snaps every 8 dp, so that's only a few
+ * dozen small writes per drag.
  */
 @Composable
 private fun IconSizeSetting(
     sizeDp: Int,
-    onSizeChange: (Int) -> Unit,
-    modifier: Modifier = Modifier
+    onSizeChange: (Int) -> Unit
 ) {
-    // Local slider state, reset whenever the saved size changes.
+    // Local slider state keeps the thumb smooth; reset whenever the saved size changes.
     var sliderValue by remember(sizeDp) { mutableFloatStateOf(sizeDp.toFloat()) }
     val min = OverlaySettings.MIN_ICON_SIZE_DP
     val max = OverlaySettings.MAX_ICON_SIZE_DP
     val step = OverlaySettings.ICON_SIZE_STEP_DP
 
-    Column(modifier = modifier.fillMaxWidth()) {
+    Column(modifier = Modifier.fillMaxWidth()) {
         Text(
             text = stringResource(R.string.icon_size_label, sliderValue.roundToInt()),
             style = MaterialTheme.typography.titleMedium,
@@ -142,11 +221,33 @@ private fun IconSizeSetting(
         )
         Slider(
             value = sliderValue,
-            onValueChange = { sliderValue = it },
-            onValueChangeFinished = { onSizeChange(sliderValue.roundToInt()) },
+            onValueChange = { value ->
+                sliderValue = value
+                val snapped = value.roundToInt()
+                if (snapped != sizeDp) onSizeChange(snapped)
+            },
             valueRange = min.toFloat()..max.toFloat(),
             steps = (max - min) / step - 1
         )
+    }
+}
+
+@Composable
+private fun ShowCircleBackgroundSetting(
+    show: Boolean,
+    onShowChange: (Boolean) -> Unit
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = stringResource(R.string.show_circle_background),
+            style = MaterialTheme.typography.titleMedium,
+            color = Color.White,
+            modifier = Modifier.weight(1f)
+        )
+        Switch(checked = show, onCheckedChange = onShowChange)
     }
 }
 
@@ -155,7 +256,7 @@ private class ChargingSpeedProvider : PreviewParameterProvider<ChargingSpeed> {
     override val values = ChargingSpeed.entries.asSequence()
 }
 
-@Preview(showBackground = true)
+@Preview(showBackground = true, heightDp = 800)
 @Composable
 private fun MainContentPreview(
     @PreviewParameter(ChargingSpeedProvider::class) chargingSpeed: ChargingSpeed
@@ -164,6 +265,8 @@ private fun MainContentPreview(
         MainContent(
             uiState = MainUiState(chargingSpeed = chargingSpeed),
             onIconSizeChange = {},
+            onShowCircleBackgroundChange = {},
+            onSimulatedSpeedChange = {},
             onClose = {}
         )
     }
