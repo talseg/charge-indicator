@@ -3,12 +3,16 @@ package com.talseg.chargeindicator.ui.main
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -54,7 +58,7 @@ fun MainScreen(viewModel: MainViewModel, onClose: () -> Unit) {
         uiState = uiState,
         onIconSizeChange = viewModel::onIconSizeChange,
         onShowCircleBackgroundChange = viewModel::onShowCircleBackgroundChange,
-        onSimulatedSpeedChange = viewModel::onSimulatedSpeedChange,
+        onPreviewSpeedChange = viewModel::onPreviewSpeedChange,
         onClose = onClose
     )
 }
@@ -65,69 +69,130 @@ fun MainContent(
     uiState: MainUiState,
     onIconSizeChange: (Int) -> Unit,
     onShowCircleBackgroundChange: (Boolean) -> Unit,
-    onSimulatedSpeedChange: (ChargingSpeed?) -> Unit,
+    onPreviewSpeedChange: (ChargingSpeed) -> Unit,
     onClose: () -> Unit
 ) {
-    val speedColor = Color(uiState.chargingSpeed.colorArgb())
-
     Scaffold(
         modifier = Modifier.fillMaxSize(),
         containerColor = Color.Blue
     ) { innerPadding ->
-        Column(
+        // BoxWithConstraints reveals the available size, so the layout can adapt to it.
+        BoxWithConstraints(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
-                .padding(horizontal = 24.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
+                .padding(horizontal = 24.dp)
         ) {
-            Spacer(Modifier.height(24.dp))
-            Text(
-                text = stringResource(R.string.app_name),
-                style = MaterialTheme.typography.headlineLarge,
-                color = speedColor
-            )
-
-            // The preview takes the free space, so large icon sizes still fit.
-            Column(
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxWidth(),
-                verticalArrangement = Arrangement.Center,
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                OverlayIconPreview(
-                    chargingSpeed = uiState.chargingSpeed,
-                    sizeDp = uiState.iconSizeDp,
-                    showCircleBackground = uiState.showCircleBackground
-                )
-                Spacer(Modifier.height(12.dp))
-                Text(
-                    text = stringResource(uiState.chargingSpeed.labelRes()),
-                    style = MaterialTheme.typography.titleLarge,
-                    color = speedColor
+            val settings: @Composable () -> Unit = {
+                SettingsPanel(
+                    uiState = uiState,
+                    onIconSizeChange = onIconSizeChange,
+                    onShowCircleBackgroundChange = onShowCircleBackgroundChange,
+                    onPreviewSpeedChange = onPreviewSpeedChange,
+                    onClose = onClose
                 )
             }
 
-            PreviewStateSelector(
-                simulatedSpeed = uiState.simulatedSpeed,
-                onSimulatedSpeedChange = onSimulatedSpeedChange
-            )
-            Spacer(Modifier.height(16.dp))
-            IconSizeSetting(
-                sizeDp = uiState.iconSizeDp,
-                onSizeChange = onIconSizeChange
-            )
-            ShowCircleBackgroundSetting(
-                show = uiState.showCircleBackground,
-                onShowChange = onShowCircleBackgroundChange
-            )
-            Button(
-                onClick = onClose,
-                modifier = Modifier.padding(vertical = 16.dp)
-            ) {
-                Text("Close")
+            if (maxWidth > maxHeight) {
+                // Landscape: settings on the left (scrollable), preview on the right.
+                Row(modifier = Modifier.fillMaxSize()) {
+                    Column(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxHeight()
+                            .verticalScroll(rememberScrollState()),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        AppTitle(uiState.previewSpeed)
+                        settings()
+                    }
+                    PreviewPane(
+                        uiState = uiState,
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxHeight()
+                    )
+                }
+            } else {
+                // Portrait: title on top, preview takes the free space, settings below.
+                Column(
+                    modifier = Modifier.fillMaxSize(),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    AppTitle(uiState.previewSpeed)
+                    PreviewPane(
+                        uiState = uiState,
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxWidth()
+                    )
+                    settings()
+                }
             }
+        }
+    }
+}
+
+@Composable
+private fun AppTitle(chargingSpeed: ChargingSpeed) {
+    Text(
+        text = stringResource(R.string.app_name),
+        style = MaterialTheme.typography.headlineLarge,
+        color = Color(chargingSpeed.colorArgb()),
+        modifier = Modifier.padding(top = 24.dp)
+    )
+}
+
+/** The overlay icon preview with the speed label under it, centered in the given space. */
+@Composable
+private fun PreviewPane(uiState: MainUiState, modifier: Modifier = Modifier) {
+    Column(
+        modifier = modifier,
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        OverlayIconPreview(
+            chargingSpeed = uiState.previewSpeed,
+            sizeDp = uiState.iconSizeDp,
+            showCircleBackground = uiState.showCircleBackground
+        )
+        Spacer(Modifier.height(12.dp))
+        Text(
+            text = stringResource(uiState.previewSpeed.labelRes()),
+            style = MaterialTheme.typography.titleLarge,
+            color = Color(uiState.previewSpeed.colorArgb())
+        )
+    }
+}
+
+@Composable
+private fun SettingsPanel(
+    uiState: MainUiState,
+    onIconSizeChange: (Int) -> Unit,
+    onShowCircleBackgroundChange: (Boolean) -> Unit,
+    onPreviewSpeedChange: (ChargingSpeed) -> Unit,
+    onClose: () -> Unit
+) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Spacer(Modifier.height(16.dp))
+        PreviewStateSelector(
+            previewSpeed = uiState.previewSpeed,
+            onPreviewSpeedChange = onPreviewSpeedChange
+        )
+        Spacer(Modifier.height(16.dp))
+        IconSizeSetting(
+            sizeDp = uiState.iconSizeDp,
+            onSizeChange = onIconSizeChange
+        )
+        ShowCircleBackgroundSetting(
+            show = uiState.showCircleBackground,
+            onShowChange = onShowCircleBackgroundChange
+        )
+        Button(
+            onClick = onClose,
+            modifier = Modifier.padding(vertical = 16.dp)
+        ) {
+            Text("Close")
         }
     }
 }
@@ -161,11 +226,11 @@ private fun OverlayIconPreview(
     }
 }
 
-/** Chips to preview each charging state; "Live" follows the real charger. */
+/** Chips to preview each charging speed. Exactly one is always selected. */
 @Composable
 private fun PreviewStateSelector(
-    simulatedSpeed: ChargingSpeed?,
-    onSimulatedSpeedChange: (ChargingSpeed?) -> Unit
+    previewSpeed: ChargingSpeed,
+    onPreviewSpeedChange: (ChargingSpeed) -> Unit
 ) {
     val chipColors = FilterChipDefaults.filterChipColors(
         labelColor = Color.White,
@@ -179,16 +244,10 @@ private fun PreviewStateSelector(
             color = Color.White
         )
         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            FilterChip(
-                selected = simulatedSpeed == null,
-                onClick = { onSimulatedSpeedChange(null) },
-                label = { Text(stringResource(R.string.preview_state_live)) },
-                colors = chipColors
-            )
-            ChargingSpeed.entries.forEach { speed ->
+            ChargingSpeed.entries.filter { it != ChargingSpeed.NONE }.forEach { speed ->
                 FilterChip(
-                    selected = simulatedSpeed == speed,
-                    onClick = { onSimulatedSpeedChange(speed) },
+                    selected = previewSpeed == speed,
+                    onClick = { onPreviewSpeedChange(speed) },
                     label = { Text(stringResource(speed.labelRes())) },
                     colors = chipColors
                 )
@@ -263,10 +322,24 @@ private fun MainContentPreview(
 ) {
     ChargeIndicatorTheme {
         MainContent(
-            uiState = MainUiState(chargingSpeed = chargingSpeed),
+            uiState = MainUiState(previewSpeed =chargingSpeed),
             onIconSizeChange = {},
             onShowCircleBackgroundChange = {},
-            onSimulatedSpeedChange = {},
+            onPreviewSpeedChange = {},
+            onClose = {}
+        )
+    }
+}
+
+@Preview(name = "Landscape", showBackground = true, widthDp = 800, heightDp = 360)
+@Composable
+private fun MainContentLandscapePreview() {
+    ChargeIndicatorTheme {
+        MainContent(
+            uiState = MainUiState(previewSpeed =ChargingSpeed.FAST, iconSizeDp = 120),
+            onIconSizeChange = {},
+            onShowCircleBackgroundChange = {},
+            onPreviewSpeedChange = {},
             onClose = {}
         )
     }

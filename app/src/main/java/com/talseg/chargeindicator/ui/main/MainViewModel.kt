@@ -3,7 +3,6 @@ package com.talseg.chargeindicator.ui.main
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import com.talseg.chargeindicator.battery.BatteryMonitor
 import com.talseg.chargeindicator.battery.ChargingSpeed
 import com.talseg.chargeindicator.settings.OverlaySettingsRepository
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -17,18 +16,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private val settingsRepository = OverlaySettingsRepository(application)
 
-    // Screen-only state, not persisted: which charging state the preview is simulating.
-    private val simulatedSpeed = MutableStateFlow<ChargingSpeed?>(null)
+    // Screen-only state, not persisted: which charging speed the preview shows.
+    private val previewSpeed = MutableStateFlow(DEFAULT_PREVIEW_SPEED)
 
     val uiState: StateFlow<MainUiState> =
-        combine(
-            BatteryMonitor(application).batteryState,
-            settingsRepository.settings,
-            simulatedSpeed
-        ) { battery, settings, simulated ->
+        combine(settingsRepository.settings, previewSpeed) { settings, speed ->
             MainUiState(
-                chargingSpeed = simulated ?: battery.chargingSpeed,
-                simulatedSpeed = simulated,
+                previewSpeed = speed,
                 iconSizeDp = settings.iconSizeDp,
                 showCircleBackground = settings.showCircleBackground
             )
@@ -46,8 +40,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch { settingsRepository.setShowCircleBackground(show) }
     }
 
-    /** Null returns the preview to the live charging state. */
-    fun onSimulatedSpeedChange(speed: ChargingSpeed?) {
-        simulatedSpeed.value = speed
+    fun onPreviewSpeedChange(speed: ChargingSpeed) {
+        previewSpeed.value = speed
+    }
+
+    companion object {
+        val DEFAULT_PREVIEW_SPEED = ChargingSpeed.FAST
     }
 }

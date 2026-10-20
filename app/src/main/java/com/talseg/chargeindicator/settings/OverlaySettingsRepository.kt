@@ -23,7 +23,7 @@ data class OverlaySettings(
     companion object {
         const val DEFAULT_ICON_SIZE_DP = 56
         const val MIN_ICON_SIZE_DP = 32
-        const val MAX_ICON_SIZE_DP = 256
+        const val MAX_ICON_SIZE_DP = 152
         const val ICON_SIZE_STEP_DP = 8
     }
 }
@@ -44,7 +44,9 @@ class OverlaySettingsRepository(context: Context) {
         }
         .map { prefs ->
             OverlaySettings(
-                iconSizeDp = prefs[ICON_SIZE_DP] ?: OverlaySettings.DEFAULT_ICON_SIZE_DP,
+                // Clamped, so a value saved under an older, wider range stays valid.
+                iconSizeDp = (prefs[ICON_SIZE_DP] ?: OverlaySettings.DEFAULT_ICON_SIZE_DP)
+                    .coerceIn(OverlaySettings.MIN_ICON_SIZE_DP, OverlaySettings.MAX_ICON_SIZE_DP),
                 showCircleBackground = prefs[SHOW_CIRCLE_BACKGROUND] ?: true,
                 positionX = prefs[POSITION_X],
                 positionY = prefs[POSITION_Y]

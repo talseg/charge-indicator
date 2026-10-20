@@ -10,7 +10,6 @@
     <string name="icon_size_label">Icon size: %1$d dp</string>
     <string name="show_circle_background">Show Circle background</string>
     <string name="preview_state_label">Preview</string>
-    <string name="preview_state_live">Live</string>
 
     <string name="overlay_notification_channel">Charging indicator</string>
     <string name="overlay_notification_text">Showing the charging indicator</string>
