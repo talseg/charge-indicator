@@ -4,6 +4,11 @@
 
     <!-- "Display over other apps": lets the app add a floating overlay window. -->
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+    <!-- Foreground service that keeps the overlay alive after the app's screen closes. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+    <!-- Android 13+: needed for the service's notification to be visible. -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <application
         android:allowBackup="true"
@@ -26,6 +31,16 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <service
+            android:name=".overlay.ChargeOverlayService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse">
+            <!-- Required for specialUse: explains to Google Play why the service exists. -->
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="Shows a floating charging indicator over other apps." />
+        </service>
     </application>
 
 </manifest>
