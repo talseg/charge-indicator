@@ -17,11 +17,14 @@ import androidx.core.content.ContextCompat
 import com.talseg.chargeindicator.MainActivity
 import com.talseg.chargeindicator.R
 import com.talseg.chargeindicator.battery.BatteryMonitor
+import com.talseg.chargeindicator.battery.ChargingSpeed
 import com.talseg.chargeindicator.ui.colorArgb
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 
 /**
@@ -50,11 +53,19 @@ class ChargeOverlayService : Service() {
         }
 
         val overlay = ChargeOverlay(this).also { this.overlay = it }
-        overlay.show()
         scope.launch {
-            BatteryMonitor(this@ChargeOverlayService).batteryState.collect { state ->
-                overlay.setColor(state.chargingSpeed.colorArgb())
-            }
+            BatteryMonitor(this@ChargeOverlayService).batteryState
+                .map { it.chargingSpeed }
+                .distinctUntilChanged()
+                .collect { speed ->
+                    // Visible only while charging; colored by charging speed.
+                    if (speed == ChargingSpeed.NONE) {
+                        overlay.hide()
+                    } else {
+                        overlay.setColor(speed.colorArgb())
+                        overlay.show()
+                    }
+                }
         }
     }
 
