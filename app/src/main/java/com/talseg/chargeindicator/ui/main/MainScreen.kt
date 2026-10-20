@@ -1,6 +1,5 @@
 package com.talseg.chargeindicator.ui.main
 
-import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -28,6 +27,8 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.talseg.chargeindicator.R
 import com.talseg.chargeindicator.battery.ChargingSpeed
+import com.talseg.chargeindicator.ui.colorArgb
+import com.talseg.chargeindicator.ui.labelRes
 import com.talseg.chargeindicator.ui.theme.ChargeIndicatorTheme
 
 /** Connects the ViewModel to the UI. The only composable that knows about [MainViewModel]. */
@@ -71,7 +72,7 @@ private fun Greeting(
     chargingSpeed: ChargingSpeed,
     modifier: Modifier = Modifier
 ) {
-    val color = chargingSpeed.color()
+    val color = Color(chargingSpeed.colorArgb())
     Column(
         modifier = modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.Center,
@@ -96,24 +97,6 @@ private fun Greeting(
             color = color
         )
     }
-}
-
-/** Color intensity grows with charging speed. */
-private fun ChargingSpeed.color(): Color = when (this) {
-    ChargingSpeed.NONE -> Color.White
-    ChargingSpeed.VERY_SLOW -> Color(0xFFFFF59D) // light yellow
-    ChargingSpeed.SLOW -> Color(0xFFFFEB3B)      // yellow
-    ChargingSpeed.FAST -> Color(0xFFFF9800)      // orange
-    ChargingSpeed.SUPER_FAST -> Color(0xFFF44336) // red
-}
-
-@StringRes
-private fun ChargingSpeed.labelRes(): Int = when (this) {
-    ChargingSpeed.NONE -> R.string.charging_speed_none
-    ChargingSpeed.VERY_SLOW -> R.string.charging_speed_very_slow
-    ChargingSpeed.SLOW -> R.string.charging_speed_slow
-    ChargingSpeed.FAST -> R.string.charging_speed_fast
-    ChargingSpeed.SUPER_FAST -> R.string.charging_speed_super_fast
 }
 
 /** Feeds every [ChargingSpeed] into the preview below, so each one renders side by side. */
