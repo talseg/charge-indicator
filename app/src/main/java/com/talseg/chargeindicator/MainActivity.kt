@@ -7,6 +7,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
+import com.talseg.chargeindicator.oem.XiaomiAutostart
 import com.talseg.chargeindicator.overlay.ChargeOverlayService
 import com.talseg.chargeindicator.ui.main.MainScreen
 import com.talseg.chargeindicator.ui.main.MainViewModel
@@ -21,7 +22,11 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             ChargeIndicatorTheme {
-                MainScreen(viewModel = viewModel, onClose = { finish() })
+                MainScreen(
+                    viewModel = viewModel,
+                    onOpenAutostartSettings = { XiaomiAutostart.openSettings(this) },
+                    onClose = { finish() }
+                )
             }
         }
 
@@ -30,6 +35,12 @@ class MainActivity : ComponentActivity() {
         } else {
             Log.w(TAG, "No 'Display over other apps' permission; overlay service not started")
         }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        // The user may have just changed the setting in another screen and come back.
+        viewModel.refreshSystemSettings()
     }
 
     private companion object {

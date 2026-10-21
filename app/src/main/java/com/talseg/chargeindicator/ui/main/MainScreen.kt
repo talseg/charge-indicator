@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
@@ -26,6 +27,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -52,7 +54,11 @@ import kotlin.math.roundToInt
 
 /** Connects the ViewModel to the UI. The only composable that knows about [MainViewModel]. */
 @Composable
-fun MainScreen(viewModel: MainViewModel, onClose: () -> Unit) {
+fun MainScreen(
+    viewModel: MainViewModel,
+    onOpenAutostartSettings: () -> Unit,
+    onClose: () -> Unit
+) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     MainContent(
         uiState = uiState,
@@ -60,6 +66,33 @@ fun MainScreen(viewModel: MainViewModel, onClose: () -> Unit) {
         onShowCircleBackgroundChange = viewModel::onShowCircleBackgroundChange,
         onPreviewSpeedChange = viewModel::onPreviewSpeedChange,
         onClose = onClose
+    )
+    if (uiState.showAutostartDialog) {
+        AutostartDialog(
+            // Not dismissed here: if it's still off when the user returns, the dialog stays.
+            onOpenSettings = onOpenAutostartSettings,
+            onLater = viewModel::onAutostartDialogDismiss
+        )
+    }
+}
+
+/** Asks the user to enable Xiaomi's "Background autostart" for this app. */
+@Composable
+private fun AutostartDialog(onOpenSettings: () -> Unit, onLater: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onLater,
+        title = { Text(stringResource(R.string.autostart_dialog_title)) },
+        text = { Text(stringResource(R.string.autostart_dialog_text)) },
+        confirmButton = {
+            TextButton(onClick = onOpenSettings) {
+                Text(stringResource(R.string.autostart_dialog_open_settings))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onLater) {
+                Text(stringResource(R.string.autostart_dialog_later))
+            }
+        }
     )
 }
 

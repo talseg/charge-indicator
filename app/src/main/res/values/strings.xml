@@ -11,6 +11,11 @@
     <string name="show_circle_background">Show Circle background</string>
     <string name="preview_state_label">Preview</string>
 
+    <string name="autostart_dialog_title">Allow autostart</string>
+    <string name="autostart_dialog_text">To show the charging indicator after the phone restarts, Charge Indicator must be allowed to start in the background.\n\nOn the next screen, find Charge Indicator and turn it on.</string>
+    <string name="autostart_dialog_open_settings">Open settings</string>
+    <string name="autostart_dialog_later">Later</string>
+
     <string name="overlay_notification_channel">Charging indicator</string>
     <string name="overlay_notification_text">Showing the charging indicator</string>
     <string name="overlay_notification_stop">Stop</string>
