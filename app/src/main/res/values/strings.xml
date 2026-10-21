@@ -11,10 +11,14 @@
     <string name="show_circle_background">Show Circle background</string>
     <string name="preview_state_label">Preview</string>
 
-    <string name="autostart_dialog_title">Allow autostart</string>
-    <string name="autostart_dialog_text">To show the charging indicator after the phone restarts, Charge Indicator must be allowed to start in the background.\n\nOn the next screen, find Charge Indicator and turn it on.</string>
-    <string name="autostart_dialog_open_settings">Open settings</string>
-    <string name="autostart_dialog_later">Later</string>
+    <string name="setup_xiaomi_windows_title">Allow pop-up windows</string>
+    <string name="setup_xiaomi_windows_text">To show the charging indicator over other apps, Charge Indicator needs two permissions:\n\n• Display pop-up windows\n• Open new windows while running in the background\n\nOn the next screen, turn both on.</string>
+    <string name="setup_overlay_title">Allow display over other apps</string>
+    <string name="setup_overlay_text">To show the charging indicator over other apps, Charge Indicator needs permission to display over other apps.\n\nOn the next screen, turn it on.</string>
+    <string name="setup_autostart_title">Allow autostart</string>
+    <string name="setup_autostart_text">To show the charging indicator after the phone restarts, Charge Indicator must be allowed to start in the background.\n\nOn the next screen, find Charge Indicator and turn it on.</string>
+    <string name="setup_open_settings">Open settings</string>
+    <string name="setup_later">Later</string>
 
     <string name="overlay_notification_channel">Charging indicator</string>
     <string name="overlay_notification_text">Showing the charging indicator</string>

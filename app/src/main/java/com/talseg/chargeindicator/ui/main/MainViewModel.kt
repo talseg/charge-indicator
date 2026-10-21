@@ -1,10 +1,11 @@
 package com.talseg.chargeindicator.ui.main
 
 import android.app.Application
+import android.provider.Settings
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.talseg.chargeindicator.battery.ChargingSpeed
-import com.talseg.chargeindicator.oem.XiaomiAutostart
+import com.talseg.chargeindicator.oem.MiuiPermissions
 import com.talseg.chargeindicator.settings.OverlaySettingsRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -20,24 +21,24 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     // Screen-only state, not persisted: which charging speed the preview shows.
     private val previewSpeed = MutableStateFlow(DEFAULT_PREVIEW_SPEED)
 
-    private val autostartState = MutableStateFlow(XiaomiAutostart.State.UNKNOWN)
+    // System settings that still need the user, most important first. Refreshed on resume.
+    private val missingSetupSteps = MutableStateFlow(emptyList<SetupStep>())
 
-    // "Later" hides the dialog until the app is opened again.
-    private val autostartDialogDismissed = MutableStateFlow(false)
+    // Steps the user postponed with "Later"; asked again the next time the app opens.
+    private val postponedSetupSteps = MutableStateFlow(emptySet<SetupStep>())
 
     val uiState: StateFlow<MainUiState> =
         combine(
             settingsRepository.settings,
             previewSpeed,
-            autostartState,
-            autostartDialogDismissed
-        ) { settings, speed, autostart, dismissed ->
+            missingSetupSteps,
+            postponedSetupSteps
+        ) { settings, speed, missing, postponed ->
             MainUiState(
                 previewSpeed = speed,
                 iconSizeDp = settings.iconSizeDp,
                 showCircleBackground = settings.showCircleBackground,
-                // Only when we know it's off; an unreadable state never nags.
-                showAutostartDialog = autostart == XiaomiAutostart.State.DISABLED && !dismissed
+                setupPrompt = missing.firstOrNull { it !in postponed }
             )
         }.stateIn(
             scope = viewModelScope,
@@ -47,11 +48,28 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     /** Re-reads system settings the user may have changed elsewhere (called on resume). */
     fun refreshSystemSettings() {
-        autostartState.value = XiaomiAutostart.getState(getApplication())
+        val context = getApplication<Application>()
+        val canDrawOverlays = Settings.canDrawOverlays(context)
+
+        missingSetupSteps.value = buildList {
+            if (MiuiPermissions.isXiaomiDevice()) {
+                // Only a definite DISABLED counts; an unreadable MIUI state never nags.
+                if (!canDrawOverlays ||
+                    MiuiPermissions.backgroundWindowsState(context) == MiuiPermissions.State.DISABLED
+                ) {
+                    add(SetupStep.XIAOMI_WINDOWS)
+                }
+                if (MiuiPermissions.autostartState(context) == MiuiPermissions.State.DISABLED) {
+                    add(SetupStep.XIAOMI_AUTOSTART)
+                }
+            } else if (!canDrawOverlays) {
+                add(SetupStep.OVERLAY)
+            }
+        }
     }
 
-    fun onAutostartDialogDismiss() {
-        autostartDialogDismissed.value = true
+    fun onSetupPromptLater(step: SetupStep) {
+        postponedSetupSteps.value += step
     }
 
     fun onIconSizeChange(sizeDp: Int) {

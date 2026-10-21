@@ -56,7 +56,7 @@ import kotlin.math.roundToInt
 @Composable
 fun MainScreen(
     viewModel: MainViewModel,
-    onOpenAutostartSettings: () -> Unit,
+    onOpenSetupSettings: (SetupStep) -> Unit,
     onClose: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -67,30 +67,39 @@ fun MainScreen(
         onPreviewSpeedChange = viewModel::onPreviewSpeedChange,
         onClose = onClose
     )
-    if (uiState.showAutostartDialog) {
-        AutostartDialog(
+    uiState.setupPrompt?.let { step ->
+        SetupDialog(
+            step = step,
             // Not dismissed here: if it's still off when the user returns, the dialog stays.
-            onOpenSettings = onOpenAutostartSettings,
-            onLater = viewModel::onAutostartDialogDismiss
+            onOpenSettings = { onOpenSetupSettings(step) },
+            onLater = { viewModel.onSetupPromptLater(step) }
         )
     }
 }
 
-/** Asks the user to enable Xiaomi's "Background autostart" for this app. */
+/** Asks the user to turn on one missing system setting, with a button to its screen. */
 @Composable
-private fun AutostartDialog(onOpenSettings: () -> Unit, onLater: () -> Unit) {
+private fun SetupDialog(step: SetupStep, onOpenSettings: () -> Unit, onLater: () -> Unit) {
+    val (titleRes, textRes) = when (step) {
+        SetupStep.XIAOMI_WINDOWS ->
+            R.string.setup_xiaomi_windows_title to R.string.setup_xiaomi_windows_text
+        SetupStep.OVERLAY ->
+            R.string.setup_overlay_title to R.string.setup_overlay_text
+        SetupStep.XIAOMI_AUTOSTART ->
+            R.string.setup_autostart_title to R.string.setup_autostart_text
+    }
     AlertDialog(
         onDismissRequest = onLater,
-        title = { Text(stringResource(R.string.autostart_dialog_title)) },
-        text = { Text(stringResource(R.string.autostart_dialog_text)) },
+        title = { Text(stringResource(titleRes)) },
+        text = { Text(stringResource(textRes)) },
         confirmButton = {
             TextButton(onClick = onOpenSettings) {
-                Text(stringResource(R.string.autostart_dialog_open_settings))
+                Text(stringResource(R.string.setup_open_settings))
             }
         },
         dismissButton = {
             TextButton(onClick = onLater) {
-                Text(stringResource(R.string.autostart_dialog_later))
+                Text(stringResource(R.string.setup_later))
             }
         }
     )

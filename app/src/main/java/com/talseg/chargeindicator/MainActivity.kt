@@ -1,5 +1,7 @@
 package com.talseg.chargeindicator
 
+import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
 import android.provider.Settings
 import android.util.Log
@@ -7,10 +9,11 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
-import com.talseg.chargeindicator.oem.XiaomiAutostart
+import com.talseg.chargeindicator.oem.MiuiPermissions
 import com.talseg.chargeindicator.overlay.ChargeOverlayService
 import com.talseg.chargeindicator.ui.main.MainScreen
 import com.talseg.chargeindicator.ui.main.MainViewModel
+import com.talseg.chargeindicator.ui.main.SetupStep
 import com.talseg.chargeindicator.ui.theme.ChargeIndicatorTheme
 
 class MainActivity : ComponentActivity() {
@@ -24,12 +27,19 @@ class MainActivity : ComponentActivity() {
             ChargeIndicatorTheme {
                 MainScreen(
                     viewModel = viewModel,
-                    onOpenAutostartSettings = { XiaomiAutostart.openSettings(this) },
+                    onOpenSetupSettings = ::openSetupSettings,
                     onClose = { finish() }
                 )
             }
         }
+    }
 
+    override fun onResume() {
+        super.onResume()
+        // The user may have just changed a setting in another screen and come back.
+        viewModel.refreshSystemSettings()
+        // Starting an already-running service is harmless, so this also covers the
+        // moment the overlay permission has just been granted.
         if (Settings.canDrawOverlays(this)) {
             ChargeOverlayService.start(this)
         } else {
@@ -37,10 +47,17 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    override fun onResume() {
-        super.onResume()
-        // The user may have just changed the setting in another screen and come back.
-        viewModel.refreshSystemSettings()
+    private fun openSetupSettings(step: SetupStep) {
+        when (step) {
+            SetupStep.XIAOMI_WINDOWS -> MiuiPermissions.openOtherPermissions(this)
+            SetupStep.XIAOMI_AUTOSTART -> MiuiPermissions.openAutostartSettings(this)
+            SetupStep.OVERLAY -> startActivity(
+                Intent(
+                    Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                    Uri.fromParts("package", packageName, null)
+                )
+            )
+        }
     }
 
     private companion object {
