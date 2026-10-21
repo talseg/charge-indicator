@@ -12,8 +12,8 @@ import com.talseg.chargeindicator.battery.ChargingSpeed
 @ColorInt
 fun ChargingSpeed.colorArgb(): Int = when (this) {
     ChargingSpeed.NONE -> 0xFFFFFFFF.toInt()       // white
-    ChargingSpeed.VERY_SLOW -> 0xFFFFF59D.toInt()  // light yellow
-    ChargingSpeed.SLOW -> 0xFFFFEB3B.toInt()       // yellow
+    ChargingSpeed.VERY_SLOW -> 0xFFFFF9C4.toInt()  // pale yellow (Material Yellow 100)
+    ChargingSpeed.SLOW -> 0xFFFFD600.toInt()       // deep yellow (Material Yellow A700)
     ChargingSpeed.FAST -> 0xFFFF9800.toInt()       // orange
     ChargingSpeed.SUPER_FAST -> 0xFFF44336.toInt() // red
 }
