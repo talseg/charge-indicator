@@ -19,6 +19,7 @@ enum class SetupStep {
 data class MainUiState(
     /** The charging speed the icon preview shows, chosen with the preview chips. */
     val previewSpeed: ChargingSpeed = MainViewModel.DEFAULT_PREVIEW_SPEED,
+    val overlayEnabled: Boolean = true,
     val iconSizeDp: Int = OverlaySettings.DEFAULT_ICON_SIZE_DP,
     val showCircleBackground: Boolean = true,
     /** The setup dialog to show, or null when nothing is missing (or it was postponed). */

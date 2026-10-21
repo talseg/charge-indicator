@@ -14,6 +14,8 @@ import kotlinx.coroutines.flow.map
 import java.io.IOException
 
 data class OverlaySettings(
+    /** Master switch: when off, the overlay service doesn't run at all. */
+    val overlayEnabled: Boolean = true,
     val iconSizeDp: Int = DEFAULT_ICON_SIZE_DP,
     val showCircleBackground: Boolean = true,
     /** Saved center of the battery, in screen pixels; null until the user first drags the icon. */
@@ -44,6 +46,7 @@ class OverlaySettingsRepository(context: Context) {
         }
         .map { prefs ->
             OverlaySettings(
+                overlayEnabled = prefs[OVERLAY_ENABLED] ?: true,
                 // Clamped, so a value saved under an older, wider range stays valid.
                 iconSizeDp = (prefs[ICON_SIZE_DP] ?: OverlaySettings.DEFAULT_ICON_SIZE_DP)
                     .coerceIn(OverlaySettings.MIN_ICON_SIZE_DP, OverlaySettings.MAX_ICON_SIZE_DP),
@@ -52,6 +55,10 @@ class OverlaySettingsRepository(context: Context) {
                 centerY = prefs[CENTER_Y]
             )
         }
+
+    suspend fun setOverlayEnabled(enabled: Boolean) {
+        dataStore.edit { it[OVERLAY_ENABLED] = enabled }
+    }
 
     suspend fun setIconSizeDp(sizeDp: Int) {
         dataStore.edit { it[ICON_SIZE_DP] = sizeDp }
@@ -69,6 +76,7 @@ class OverlaySettingsRepository(context: Context) {
     }
 
     private companion object {
+        val OVERLAY_ENABLED = booleanPreferencesKey("overlay_enabled")
         val ICON_SIZE_DP = intPreferencesKey("icon_size_dp")
         val SHOW_CIRCLE_BACKGROUND = booleanPreferencesKey("show_circle_background")
         // New key names: the old "position_*" values were top-left corners, not centers.

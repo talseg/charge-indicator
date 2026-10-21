@@ -26,6 +26,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 
@@ -39,6 +40,7 @@ class ChargeOverlayService : Service() {
 
     // Services have no lifecycleScope, so we own a scope and cancel it in onDestroy.
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+    private val settingsRepository by lazy { OverlaySettingsRepository(this) }
     private var overlay: ChargeOverlay? = null
 
     override fun onBind(intent: Intent?): IBinder? = null // Started service, not bound.
@@ -54,7 +56,6 @@ class ChargeOverlayService : Service() {
             return
         }
 
-        val settingsRepository = OverlaySettingsRepository(this)
         val overlay = ChargeOverlay(this).also { this.overlay = it }
         overlay.onDragEnd = { centerX, centerY ->
             scope.launch { settingsRepository.setCenter(centerX, centerY) }
@@ -68,6 +69,12 @@ class ChargeOverlayService : Service() {
             // Settings are applied before showing, so the icon appears at its saved size and place.
             combine(chargingSpeed, settingsRepository.settings) { speed, settings -> speed to settings }
                 .collect { (speed, settings) ->
+                    if (!settings.overlayEnabled) {
+                        // Turned off in the app (or with the notification's Stop): shut down fully.
+                        overlay.hide()
+                        stopSelf()
+                        return@collect
+                    }
                     overlay.setSizeDp(settings.iconSizeDp)
                     overlay.setShowCircleBackground(settings.showCircleBackground)
                     if (settings.centerX != null && settings.centerY != null) {
@@ -86,7 +93,11 @@ class ChargeOverlayService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if (intent?.action == ACTION_STOP) {
-            stopSelf()
+            // Saved as a setting, so reopening the app or rebooting doesn't bring it back.
+            scope.launch {
+                settingsRepository.setOverlayEnabled(false)
+                stopSelf()
+            }
             return START_NOT_STICKY
         }
         // If Android kills the process to reclaim memory, recreate the service later.
@@ -145,6 +156,17 @@ class ChargeOverlayService : Service() {
                 context,
                 Intent(context, ChargeOverlayService::class.java)
             )
+        }
+
+        /** Starts the service only if the user has it switched on and the permission is granted. */
+        suspend fun startIfEnabled(context: Context) {
+            if (!Settings.canDrawOverlays(context)) {
+                Log.w(TAG, "No 'Display over other apps' permission; not starting")
+                return
+            }
+            if (OverlaySettingsRepository(context).settings.first().overlayEnabled) {
+                start(context)
+            }
         }
     }
 }

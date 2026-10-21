@@ -7,6 +7,7 @@
     <string name="charging_speed_fast">Fast</string>
     <string name="charging_speed_super_fast">Super Fast</string>
 
+    <string name="show_charging_indicator">Show charging indicator</string>
     <string name="icon_size_label">Icon size: %1$d dp</string>
     <string name="show_circle_background">Show Circle background</string>
     <string name="preview_state_label">Preview</string>

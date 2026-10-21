@@ -1,5 +1,6 @@
 package com.talseg.chargeindicator.ui.main
 
+import androidx.annotation.StringRes
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -62,6 +63,7 @@ fun MainScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     MainContent(
         uiState = uiState,
+        onOverlayEnabledChange = viewModel::onOverlayEnabledChange,
         onIconSizeChange = viewModel::onIconSizeChange,
         onShowCircleBackgroundChange = viewModel::onShowCircleBackgroundChange,
         onPreviewSpeedChange = viewModel::onPreviewSpeedChange,
@@ -109,6 +111,7 @@ private fun SetupDialog(step: SetupStep, onOpenSettings: () -> Unit, onLater: ()
 @Composable
 fun MainContent(
     uiState: MainUiState,
+    onOverlayEnabledChange: (Boolean) -> Unit,
     onIconSizeChange: (Int) -> Unit,
     onShowCircleBackgroundChange: (Boolean) -> Unit,
     onPreviewSpeedChange: (ChargingSpeed) -> Unit,
@@ -128,6 +131,7 @@ fun MainContent(
             val settings: @Composable () -> Unit = {
                 SettingsPanel(
                     uiState = uiState,
+                    onOverlayEnabledChange = onOverlayEnabledChange,
                     onIconSizeChange = onIconSizeChange,
                     onShowCircleBackgroundChange = onShowCircleBackgroundChange,
                     onPreviewSpeedChange = onPreviewSpeedChange,
@@ -210,12 +214,19 @@ private fun PreviewPane(uiState: MainUiState, modifier: Modifier = Modifier) {
 @Composable
 private fun SettingsPanel(
     uiState: MainUiState,
+    onOverlayEnabledChange: (Boolean) -> Unit,
     onIconSizeChange: (Int) -> Unit,
     onShowCircleBackgroundChange: (Boolean) -> Unit,
     onPreviewSpeedChange: (ChargingSpeed) -> Unit,
     onClose: () -> Unit
 ) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Spacer(Modifier.height(16.dp))
+        SwitchSetting(
+            labelRes = R.string.show_charging_indicator,
+            checked = uiState.overlayEnabled,
+            onCheckedChange = onOverlayEnabledChange
+        )
         Spacer(Modifier.height(16.dp))
         PreviewStateSelector(
             previewSpeed = uiState.previewSpeed,
@@ -226,9 +237,10 @@ private fun SettingsPanel(
             sizeDp = uiState.iconSizeDp,
             onSizeChange = onIconSizeChange
         )
-        ShowCircleBackgroundSetting(
-            show = uiState.showCircleBackground,
-            onShowChange = onShowCircleBackgroundChange
+        SwitchSetting(
+            labelRes = R.string.show_circle_background,
+            checked = uiState.showCircleBackground,
+            onCheckedChange = onShowCircleBackgroundChange
         )
         Button(
             onClick = onClose,
@@ -341,22 +353,24 @@ private fun IconSizeSetting(
     }
 }
 
+/** A label with an on/off switch at the end of the row. */
 @Composable
-private fun ShowCircleBackgroundSetting(
-    show: Boolean,
-    onShowChange: (Boolean) -> Unit
+private fun SwitchSetting(
+    @StringRes labelRes: Int,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(
-            text = stringResource(R.string.show_circle_background),
+            text = stringResource(labelRes),
             style = MaterialTheme.typography.titleMedium,
             color = Color.White,
             modifier = Modifier.weight(1f)
         )
-        Switch(checked = show, onCheckedChange = onShowChange)
+        Switch(checked = checked, onCheckedChange = onCheckedChange)
     }
 }
 
@@ -373,6 +387,7 @@ private fun MainContentPreview(
     ChargeIndicatorTheme {
         MainContent(
             uiState = MainUiState(previewSpeed =chargingSpeed),
+            onOverlayEnabledChange = {},
             onIconSizeChange = {},
             onShowCircleBackgroundChange = {},
             onPreviewSpeedChange = {},
@@ -387,6 +402,7 @@ private fun MainContentLandscapePreview() {
     ChargeIndicatorTheme {
         MainContent(
             uiState = MainUiState(previewSpeed =ChargingSpeed.FAST, iconSizeDp = 120),
+            onOverlayEnabledChange = {},
             onIconSizeChange = {},
             onShowCircleBackgroundChange = {},
             onPreviewSpeedChange = {},

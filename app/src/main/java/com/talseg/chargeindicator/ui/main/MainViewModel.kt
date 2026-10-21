@@ -6,6 +6,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.talseg.chargeindicator.battery.ChargingSpeed
 import com.talseg.chargeindicator.oem.MiuiPermissions
+import com.talseg.chargeindicator.overlay.ChargeOverlayService
 import com.talseg.chargeindicator.settings.OverlaySettingsRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -36,9 +37,15 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         ) { settings, speed, missing, postponed ->
             MainUiState(
                 previewSpeed = speed,
+                overlayEnabled = settings.overlayEnabled,
                 iconSizeDp = settings.iconSizeDp,
                 showCircleBackground = settings.showCircleBackground,
-                setupPrompt = missing.firstOrNull { it !in postponed }
+                // No point asking for permissions while the indicator is switched off.
+                setupPrompt = if (settings.overlayEnabled) {
+                    missing.firstOrNull { it !in postponed }
+                } else {
+                    null
+                }
             )
         }.stateIn(
             scope = viewModelScope,
@@ -70,6 +77,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun onSetupPromptLater(step: SetupStep) {
         postponedSetupSteps.value += step
+    }
+
+    fun onOverlayEnabledChange(enabled: Boolean) {
+        viewModelScope.launch {
+            settingsRepository.setOverlayEnabled(enabled)
+            // Turning off is handled by the service itself: it stops when it sees the setting.
+            if (enabled) ChargeOverlayService.startIfEnabled(getApplication())
+        }
     }
 
     fun onIconSizeChange(sizeDp: Int) {

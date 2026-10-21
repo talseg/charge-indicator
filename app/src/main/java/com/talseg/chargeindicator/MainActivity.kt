@@ -4,17 +4,18 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import android.provider.Settings
-import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
+import androidx.lifecycle.lifecycleScope
 import com.talseg.chargeindicator.oem.MiuiPermissions
 import com.talseg.chargeindicator.overlay.ChargeOverlayService
 import com.talseg.chargeindicator.ui.main.MainScreen
 import com.talseg.chargeindicator.ui.main.MainViewModel
 import com.talseg.chargeindicator.ui.main.SetupStep
 import com.talseg.chargeindicator.ui.theme.ChargeIndicatorTheme
+import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
 
@@ -40,11 +41,7 @@ class MainActivity : ComponentActivity() {
         viewModel.refreshSystemSettings()
         // Starting an already-running service is harmless, so this also covers the
         // moment the overlay permission has just been granted.
-        if (Settings.canDrawOverlays(this)) {
-            ChargeOverlayService.start(this)
-        } else {
-            Log.w(TAG, "No 'Display over other apps' permission; overlay service not started")
-        }
+        lifecycleScope.launch { ChargeOverlayService.startIfEnabled(this@MainActivity) }
     }
 
     private fun openSetupSettings(step: SetupStep) {
@@ -58,9 +55,5 @@ class MainActivity : ComponentActivity() {
                 )
             )
         }
-    }
-
-    private companion object {
-        const val TAG = "MainActivity"
     }
 }
