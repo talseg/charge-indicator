@@ -25,6 +25,9 @@ android {
                 enable = true
                 packageScope = setOf("androidx.**", "kotlin.**", "kotlinx.**")
             }
+            // TEMPORARY: sign release builds with the debug key, for local testing only.
+            // Replace with a real release keystore before sharing or publishing the app.
+            signingConfig = signingConfigs.getByName("debug")
         }
     }
     compileOptions {

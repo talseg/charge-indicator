@@ -4,6 +4,12 @@
 # For more details, see
 #   https://d.android.com/r/tools/r8/keep-rules
 
+# Keep R8's shrinking and optimization, but don't rename or move classes.
+# Renaming moved kotlin.sequences.SequencesKt___SequencesJvmKt out of its package while
+# its package-private parent stayed behind, crashing release builds on startup with
+# IllegalAccessError. Without renaming, crash stack traces are also readable.
+-dontobfuscate
+
 # If your project uses WebView with JS, uncomment the following
 # and specify the fully qualified class name to the JavaScript interface
 # class:
